@@ -6,18 +6,13 @@
 				type="text"
 				placeholder="Search..."
 				v-model="query"
-				@input="loadRepositories" />
+				@input="resetAndLoadRepositories" />
 		</header>
 
 		<div class="repository-list">
-			<!-- Affiche un message si aucun résultat n'est disponible -->
-			<div v-if="filteredRepositories.length === 0">No repositories found.</div>
+			<!-- <div v-if="repositories.length === 0">No repositories found.</div> -->
 
-			<!-- Affiche la liste des dépôts filtrés -->
-			<div
-				v-for="repo in filteredRepositories"
-				:key="repo.id"
-				class="repository-item">
+			<div v-for="repo in repositories" :key="repo.id" class="repository-item">
 				<div class="repository-image">[Image Placeholder]</div>
 				<div class="repository-details">
 					<h2 class="repository-name">{{ repo.name }}</h2>
@@ -31,6 +26,12 @@
 				</div>
 			</div>
 		</div>
+
+		<footer class="pagination">
+			<button @click="prevPage" :disabled="currentPage === 1">Previous</button>
+			<span>Page {{ currentPage }}</span>
+			<button @click="nextPage">Next</button>
+		</footer>
 	</div>
 </template>
 
@@ -40,28 +41,39 @@ import api from "../services/api";
 export default {
 	data() {
 		return {
-			repositories: [], // Liste des dépôts, initialement vide
-			query: "vuejs", // Mot-clé par défaut
+			repositories: [], // Liste des dépôts
+			query: "", // Mot-clé de recherche
+			currentPage: 1, // Page actuelle
+			perPage: 10, // Nombre de dépôts par page
 		};
-	},
-	computed: {
-		filteredRepositories() {
-			if (!this.query) return this.repositories; // Retourne tous les dépôts si aucune requête
-			return this.repositories.filter(
-				(repo) =>
-					repo.name?.toLowerCase().includes(this.query.toLowerCase()) ||
-					repo.description?.toLowerCase().includes(this.query.toLowerCase())
-			);
-		},
 	},
 	methods: {
 		async loadRepositories() {
 			try {
-				const response = await api.fetchRepositories(this.query);
-				this.repositories = response.data.items || []; // Vérifie que `items` existe
+				const response = await api.fetchRepositories(
+					this.query,
+					"",
+					this.currentPage,
+					this.perPage
+				);
+				this.repositories = response.data.items || [];
 			} catch (error) {
 				console.error("Erreur lors de la récupération des dépôts:", error);
-				this.repositories = []; // Réinitialise la liste en cas d'erreur
+				this.repositories = [];
+			}
+		},
+		resetAndLoadRepositories() {
+			this.currentPage = 1; // Réinitialiser à la première page
+			this.loadRepositories();
+		},
+		nextPage() {
+			this.currentPage++;
+			this.loadRepositories();
+		},
+		prevPage() {
+			if (this.currentPage > 1) {
+				this.currentPage--;
+				this.loadRepositories();
 			}
 		},
 	},
@@ -75,6 +87,8 @@ export default {
 .repository-view {
 	font-family: Arial, sans-serif;
 	padding: 20px;
+	width: 80%;
+	margin: auto;
 }
 
 .header {
@@ -141,8 +155,20 @@ export default {
 	color: #888;
 }
 
-.repository-view {
-	width: 80%;
-	margin: auto;
+.pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-top: 20px;
+	gap: 10px;
+}
+
+.pagination button {
+	padding: 10px 15px;
+	font-size: 14px;
+}
+
+.pagination span {
+	font-size: 14px;
 }
 </style>
